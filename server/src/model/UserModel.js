@@ -28,11 +28,13 @@ defult:"img.jpg"
         lowercase:true,
         validate:[validator.isEmail,"invalid email address"]
     },
-    phone:{
-type:Number,
-unique:[true,"Already used Phone Number"],
-trim:true,
-    },
+
+phone: {
+  type: String,
+  trim: true,
+  sparse: true, // Allow null values to be treated as unique
+  required: false, // Make the field optional
+},
     password:{
         type:String,
         required:[function(){
@@ -67,25 +69,34 @@ passwordChangedAt: Date,
  
 
 },{timestamps:true});
+// userSchema.pre("save", async function(next) {
+//   if (this.isModified("phone")) {
+//     const user = await this.constructor.findOne({ phone: this.phone });
+//     if (user) {
+//       throw new Error("Already used Phone Number");
+//     }
+//   }
+//   next();
+// });
 // password encryption.
-userSchema.pre("save",async function(next){
-    if(this.isModified("password")) return next();
-    try{ 
-        this.password=await bcrypt.hash(this.password,12);
-        this.passwordConfirm=undefined;
-    } catch(err){
-        return next(err)
+userSchema.pre("save", async function(next) {
+    if (!this.isModified("password")) return next(); // Only proceed if the password is modified
 
+    try { 
+        this.password = await bcrypt.hash(this.password, 12);
+        this.passwordConfirm = undefined;
+    } catch (err) {
+        return next(err);
     }
+});
 
-})
 
 // password comparision instances.
-userSchema.method.comparePassword=async function(candidtePassword,userPassword){
+userSchema.methods.comparePassword =async function(candidtePassword,userPassword){
     return await  bcrypt.compare(candidtePassword,userPassword)
 }
 // password reset generator.
-userSchema.method.createPasswordResetGenerator=async function(next){
+userSchema.methods.createPasswordResetGenerator=async function(next){
 const resetToken= crpyto.randomBytes(32).toString("hex");
 const passwordResetToken=crpyto.createHash("sha256").update(resetToken).digest("hex");
 this.passwordResetExpires=Date.now()+30*60*1000;

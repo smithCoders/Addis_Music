@@ -4,7 +4,9 @@ const token = require("./token");
 exports.createSendToken = (user, statusCode, res) => {
   // Generate access token
   const accessToken = token.generateAccessToken(user._id);
-  
+  console.log('JWT_COOKIE_EXPIRES:', process.env.JWT_COOKIE_EXPIRES);
+console.log('REFRESH_TOKEN_COOKIE_EXPIRES:', process.env.REFRESH_TOKEN_COOKIE_EXPIRES);
+
   // Set access token cookie
   const accessTokenCookieOptions = {
     expires: new Date(
