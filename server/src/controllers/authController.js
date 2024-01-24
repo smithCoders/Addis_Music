@@ -25,8 +25,7 @@ exports.signUp = asyncHandler(async (req, res, next) => {
       firstName,
       lastName,
       email,
-  
-      password,
+   password,
       passwordConfirm,
       role
     });

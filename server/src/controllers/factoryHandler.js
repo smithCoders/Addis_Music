@@ -11,14 +11,16 @@ res.status(201).json({
 })
  });
  exports.getOne=Model=>asyncHandler(async(req,res,next)=>{
-    const  doc=await Model.findOne(req.params?._id);
+    const  doc=await Model.findOne(req.params.id);
     if(!doc){
-        return next(new AppError("document not found",404))
+        return next(new AppError("Document not found",404))
     }
-    res.status(200).json({
-        status:"sucess",
-        data:{doc}
-    })
+  res.status(200).json({
+  status: "success",
+  message: "Operation successful",
+  data: { doc }
+});
+
 
  });
  exports.getAll=Model=>asyncHandler(async(req,res,next)=>{
@@ -28,6 +30,7 @@ res.status(201).json({
     };
     res.status(200).json({
         status:"sucess",
+         message: "Operation successful",
         result:docs.length,
         data:{docs}
     })
@@ -41,6 +44,7 @@ return next(new AppError("document not found",404))
     }
     res.status(200).json({
         status:"sucess",
+         message: "Operation successful",
         data:{doc}
     })
 });

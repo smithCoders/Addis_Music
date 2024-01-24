@@ -4,8 +4,9 @@ const rateLimit=require("express-rate-limit");
 const morgan=require("morgan");
 const error=require("./src/middleware/errorMiddleware");
 const userRouter=require("./src/router/userRoute");
+const songRouter=require("./src/router/songRoute");
 const AppError = require("./src/utils/AppError");
-const rotateTokens=require("./src/middleware/rotateTokens")
+const rotateTokens=require("./src/middleware/rotateTokens");
 const app=express();
 // secure HTTP Header.
 app.use(helmet())
@@ -25,6 +26,7 @@ app.use(express.json({limit:"100kb"}))
 // app.use(rotateTokens.rotateTokens)
 // Routers.
 app.use("/api/v1/user",userRouter);
+app.use("/api/v1/songs",songRouter);
 app.all("*",(req,res,next)=>{
     next(new AppError(`page not found ${req.originalUrl}`))
 

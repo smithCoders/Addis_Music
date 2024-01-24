@@ -33,7 +33,6 @@ phone: {
   type: String,
   trim: true,
   sparse: true, // Allow null values to be treated as unique
-  required: false, // Make the field optional
 },
     password:{
         type:String,
