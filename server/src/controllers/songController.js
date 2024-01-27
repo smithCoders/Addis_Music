@@ -1,3 +1,6 @@
+const mm=require("music-metadata");
+const ytdl = require('ytdl-core');
+
 const Song = require("../model/songModel");
 const factory = require("./factoryHandler");
 const multer = require("multer");
@@ -18,7 +21,7 @@ const multerAudioStorage = multer.diskStorage({
     cb(null, "public/songs");
   },
   filename: (req, file, cb) => {
-    const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1e9)}`;
+   
     cb(null, `${file.originalname}`);
   },
 });
@@ -26,40 +29,115 @@ const multerAudioStorage = multer.diskStorage({
 const uploadAudio = multer({ storage: multerAudioStorage, fileFilter: multerAudioFilter });
 
 // Middleware to handle audio file upload
-exports.uploadSong = uploadAudio.single("audio");
+exports.uploadAudio = uploadAudio.single("audio");
 
-exports.addSong = asyncHandler(async (req, res, next) => {
+// Middleware to handle audio file upload and extract metadata
+exports.extractMetadata = async (req, res, next) => {
   try {
-    // Use req.user to get the information of the logged-in user
-    const user = req.user;
-
-    // The path of the uploaded audio file
     const audioFilePath = req.file.path;
 
-    // Include user information along with other data in the creation of the song
+    // Extract metadata from the uploaded audio file
+    const metadata = await mm.parseFile(audioFilePath, { duration: true });
+
+    // Attach metadata and audio name to the request body for later use
+    req.body.metadata = metadata.common;
+    req.body.audioName = req.file.originalname; // Use the original name of the file
+
+    next();
+  } catch (err) {
+    console.error('Error extracting metadata:', err.message);
+    return next(new AppError('Error extracting metadata', 500));
+  }
+};
+
+
+
+// Middleware to handle YouTube link, fetch metadata, download audio, and save
+exports.handleYouTubeLink = asyncHandler(async (req, res, next) => {
+  try {
+    const youtubeUrl = req.body.youtubeUrl;
+
+    // Fetch metadata and download audio from YouTube using ytdl-core.
+    const info = await ytdl.getInfo(youtubeUrl);
+    const audioBuffer = await ytdl(youtubeUrl, { filter: "audioonly", quality: "highestaudio" }).pipe(
+      require("bl")()
+    );
+
+    // Attach metadata and audio buffer to the request body for later use
+    req.body.metadata = {
+      title: info.videoDetails.title,
+      artist: info.videoDetails.author.name,
+      duration: parseInt(info.videoDetails.lengthSeconds), // Duration in seconds
+     
+    };
+    req.body.audioBuffer = audioBuffer;
+
+    next();
+  } catch (err) {
+    console.error("Error handling YouTube link:", err.message);
+    return next(new AppError("Error handling YouTube link", 500));
+  }
+});
+
+
+exports.addSongFromYouTube = asyncHandler(async (req, res, next) => {
+  try {
+    // Combine metadata and audio buffer with other data to create the song
     const songData = {
-      user: user.id, // Assuming user.id is the user ID
-      title: "hakuna matata",
-      artist: req.body.artist || "Unknown",
-      genre: req.body.genre,
-      duration: req.body.duration,
-      releaseDate: req.body.releaseDate,
-      audio: audioFilePath, // Include the path to the uploaded audio file
-      fileName:req.file.filename
+      title: req.body.title || req.body.metadata.title || "Unknown Title",
+      user: req.user.id,
+      fileName: req.body.metadata.title || "Unknown Filename", 
+      artist: req.body.artist || req.body.metadata.artist || "Unknown Artist",
+      genre: req.body.genre || "Unknown",
+      duration: req.body.duration || req.body.metadata.duration || 0,
+      releaseDate: req.body.releaseDate || null,
+     
+    };
+
+    // Save audio buffer to the database
+    const song = await Song.create(songData);
+    song.audio.data = req.body.audioBuffer;
+    song.audio.contentType = "audio/mpeg";
+    await song.save();
+
+    res.status(201).json({
+      status: "success",
+      data: { song },
+    });
+  } catch (err) {
+    console.error("Error adding song from YouTube:", err.message);
+    return next(new AppError("Error adding song from YouTube", 500));
+  }
+});
+
+// Controller for adding a song
+exports.addSong = asyncHandler(async (req, res, next) => {
+  try {
+    // Combine metadata with other data to create the song
+    const songData = {
+      title: req.body.title || req.body.metadata.title || 'Unknown Title',
+      user: req.user.id, 
+      fileName: req.body.audioName || 'Unknown Filename',
+      artist: req.body.artist || req.body.metadata.artist || 'Unknown Artist',
+      genre: req.body.genre || 'Unknown',
+  duration: req.body.duration || req.body.metadata.duration || 0,
+  releaseDate: req.body.releaseDate || null,
+      // ... other fields ...
     };
 
     // Create the song in the database
     const doc = await Song.create(songData);
 
     res.status(201).json({
-      status: "success",
+      status: 'success',
       data: { doc },
     });
   } catch (err) {
-    console.log("err:", err);
-    next(err);
+    console.error('Error adding song:', err.message);
+    return next(new AppError('Error adding song', 500));
   }
 });
+
 
 
 exports.getAllSong = factory.getAll(Song);
