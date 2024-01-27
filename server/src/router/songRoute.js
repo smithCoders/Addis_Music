@@ -20,6 +20,11 @@ router.route("/from-youtube").post(
 
 router.route("/").get(songController.getAllSong);
 
-router.route("/:id").get(songController.getOneSong).patch(songController.updateSongInfo).delete(songController.deleteSong);
+router.route("/:id").
+get(songController.getOneSong).
+patch(songController.updateSongInfo)
+.delete(songController.deleteSong);
+router.route("/search").get(songController.searchSong)
+router.route("/filter").get(songController.filterSongs)
 
 module.exports = router;

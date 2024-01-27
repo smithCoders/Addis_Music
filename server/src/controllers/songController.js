@@ -51,8 +51,6 @@ exports.extractMetadata = async (req, res, next) => {
   }
 };
 
-
-
 // Middleware to handle YouTube link, fetch metadata, download audio, and save
 exports.handleYouTubeLink = asyncHandler(async (req, res, next) => {
   try {
@@ -79,7 +77,6 @@ exports.handleYouTubeLink = asyncHandler(async (req, res, next) => {
     return next(new AppError("Error handling YouTube link", 500));
   }
 });
-
 
 exports.addSongFromYouTube = asyncHandler(async (req, res, next) => {
   try {
@@ -126,7 +123,7 @@ exports.addSong = asyncHandler(async (req, res, next) => {
       genre: req.body.genre || 'Unknown',
   duration: req.body.duration || req.body.metadata.duration || 0,
   releaseDate: req.body.releaseDate || null,
-      // ... other fields ...
+    
     };
 
     // Create the song in the database
@@ -142,7 +139,42 @@ exports.addSong = asyncHandler(async (req, res, next) => {
   }
 });
 
+// search songs. (based on title, artist and genere.)
+exports.searchSong=asyncHandler(async(req,res,next)=>{
+  // extract search query.
+  const{query}=req.query;
+  if(!query){
+    return next(new AppError("search query required",400))
+  }
+  const song=await Song.find({user:req.user.id,$or:[
+    {title:{$regex:query, $options :"i"}},
+    {artist:{$regex:query, $options :"i"}},
+   
+  ]})
+  res.status(200).json({
+    status:"sucess",
+    data:{song}
 
+  })
+
+})
+
+// filter songs.based on artist name.
+exports.filterSongs=asyncHandler(async(req,res,next)=>{
+  const{artist}=req.query;
+  // define base filter object.
+  const filter={user:req.user.id};
+  // add artist to filter.
+  if(artist){
+    filter=filter.artist;
+
+  }
+const song=await Song.find(filter)
+  res.status(200).json({
+    status: 'success',
+    data: { song },
+  });
+})
 
 exports.getAllSong = factory.getAll(Song);
 exports.getOneSong = factory.getOne(Song);
