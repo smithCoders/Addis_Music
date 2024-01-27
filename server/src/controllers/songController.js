@@ -1,5 +1,6 @@
 const mm=require("music-metadata");
 const ytdl = require('ytdl-core');
+const fs=require("fs")
 
 const Song = require("../model/songModel");
 const factory = require("./factoryHandler");
@@ -74,7 +75,7 @@ exports.handleYouTubeLink = asyncHandler(async (req, res, next) => {
 
     next();
   } catch (err) {
-    console.error("Error handling YouTube link:", err.message);
+    console.error("Error handling YouTube link:", err);
     return next(new AppError("Error handling YouTube link", 500));
   }
 });
@@ -93,7 +94,10 @@ exports.addSongFromYouTube = asyncHandler(async (req, res, next) => {
       releaseDate: req.body.releaseDate || null,
      
     };
-
+ // Save audio buffer to the local file system
+    const fileName = `${songData.fileName}.mp3`; 
+    const filePath = path.join("public/songs", fileName);
+    fs.writeFileSync(filePath, req.body.audioBuffer);
     // Save audio buffer to the database
     const song = await Song.create(songData);
     song.audio.data = req.body.audioBuffer;
@@ -105,7 +109,7 @@ exports.addSongFromYouTube = asyncHandler(async (req, res, next) => {
       data: { song },
     });
   } catch (err) {
-    console.error("Error adding song from YouTube:", err.message);
+    console.error("Error adding song from YouTube:", err);
     return next(new AppError("Error adding song from YouTube", 500));
   }
 });
