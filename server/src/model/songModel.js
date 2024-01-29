@@ -46,8 +46,15 @@ genre: {
     type: Number,
     default: 0,
   },
+   audio: {
+    data: Buffer,
+    contentType: String,
+  },
   artistPhoto: String,
-}, {
+}, 
+
+
+{
   timestamps: true,
 });
 

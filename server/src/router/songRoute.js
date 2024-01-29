@@ -5,15 +5,16 @@ const songController = require("../controllers/songController");
 
 router.use(authController.authorizeMe);
 
-// Route for uploading audio from device
+// Route for uploading audio from  device).
 router.route("/from-device").post(
   songController.uploadAudio,
   songController.extractMetadata,
   songController.addSong
 );
 
-// Route for handling YouTube links
+// Route for handling YouTube links.
 router.route("/from-youtube").post(
+  songController.uploadAudio,
   songController.handleYouTubeLink,
   songController.addSongFromYouTube
 );

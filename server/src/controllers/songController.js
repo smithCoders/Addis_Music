@@ -1,6 +1,7 @@
-const mm=require("music-metadata");
+const mm = require("music-metadata");
 const ytdl = require('ytdl-core');
-const fs=require("fs")
+const fs = require("fs");
+const path = require("path");
 
 const Song = require("../model/songModel");
 const factory = require("./factoryHandler");
@@ -22,7 +23,6 @@ const multerAudioStorage = multer.diskStorage({
     cb(null, "public/songs");
   },
   filename: (req, file, cb) => {
-   
     cb(null, `${file.originalname}`);
   },
 });
@@ -67,49 +67,64 @@ exports.handleYouTubeLink = asyncHandler(async (req, res, next) => {
       title: info.videoDetails.title,
       artist: info.videoDetails.author.name,
       duration: parseInt(info.videoDetails.lengthSeconds), // Duration in seconds
-     
     };
-    req.body.audioBuffer = audioBuffer;
+    req.body.audioBuffer = audioBuffer; // Store the audio buffer in req.body
 
     next();
   } catch (err) {
-    console.error("Error handling YouTube link:", err);
+    console.error("Error handling YouTube link:", err.message);
     return next(new AppError("Error handling YouTube link", 500));
   }
 });
 
+// ...
+
+// Controller for adding a song from YouTube
 exports.addSongFromYouTube = asyncHandler(async (req, res, next) => {
   try {
     // Combine metadata and audio buffer with other data to create the song
     const songData = {
       title: req.body.title || req.body.metadata.title || "Unknown Title",
       user: req.user.id,
-      fileName: req.body.metadata.title || "Unknown Filename", 
+      fileName: req.body.metadata.title || "Unknown Filename",
       artist: req.body.artist || req.body.metadata.artist || "Unknown Artist",
       genre: req.body.genre || "Unknown",
       duration: req.body.duration || req.body.metadata.duration || 0,
       releaseDate: req.body.releaseDate || null,
-     
     };
- // Save audio buffer to the local file system
-    const fileName = `${songData.fileName}.mp3`; 
-    const filePath = path.join("public/songs", fileName);
-    fs.writeFileSync(filePath, req.body.audioBuffer);
-    // Save audio buffer to the database
-    const song = await Song.create(songData);
-    song.audio.data = req.body.audioBuffer;
-    song.audio.contentType = "audio/mpeg";
-    await song.save();
 
-    res.status(201).json({
-      status: "success",
-      data: { song },
-    });
+    // Create the song in the database
+    const song = await Song.create(songData);
+
+    // Ensure the 'audio' property is defined
+    if (song.audio) {
+        const audioBuffer = Buffer.concat(await req.body.audioBuffer.toArray());   // Concatenate chunks into a single buffer
+
+      // Store the downloaded audio in the local storage
+      const audioFilePath = path.join("public/songs", `${song.fileName}.mp3`);
+      fs.writeFileSync(audioFilePath, audioBuffer);
+
+      // Set the audio data and content type
+      song.audio.data = audioBuffer;
+      song.audio.contentType = "audio/mpeg";
+
+      // Save the changes to the database
+      await song.save();
+
+      res.status(201).json({
+        status: "success",
+        data: { song },
+      });
+    } else {
+      // Handle the case where the 'audio' property is not defined
+      return next(new AppError("Error adding song from YouTube: Audio property is undefined", 500));
+    }
   } catch (err) {
     console.error("Error adding song from YouTube:", err);
     return next(new AppError("Error adding song from YouTube", 500));
   }
 });
+
 
 // Controller for adding a song
 exports.addSong = asyncHandler(async (req, res, next) => {
